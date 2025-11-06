@@ -71,13 +71,7 @@ num_classes = int(np.unique(y_train).size)
 assert y_train.shape[1] == 3
 num_classes = 3
 
-def create_model(input_dim, num_classes, model_name="Daddy"):
-    # inputs  = layers.Input(shape = (input_dim, ), name = "inputs")
-    # x       = layers.Reshape((input_dim, 1), name = "expand_dim")(inputs)
-    # x       = layers.GRU(256, return_sequences = True, name = "gru")(x)
-    # x       = layers.Lambda(lambda t: t[:, -1, :], name = 'collapse')(x)
-    # x       = layers.Dropout(0.5, name = "dropout")(x)
-    # outputs = layers.Dense(num_classes, activation = "softmax", name = "classifier")(x)
+def create_model(input_dim, num_classes, model_name = "Daddy"):
     inputs = layers.Input(shape = (input_dim,), name = "inputs")
     x = layers.Lambda(lambda t: tf.expand_dims(t, axis = -1), name = "expand_dims")(inputs)  
     x = layers.GRU(256, return_sequences = True, name = "gru")(x)  
