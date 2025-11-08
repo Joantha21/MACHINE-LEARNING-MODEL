@@ -1,19 +1,21 @@
 import numpy as np # linear algebra
 import pandas as pd 
-import seaborn as sns
 import matplotlib.pyplot as plt
+import tensorflow
+
+from scipy import signal
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
 from tensorflow.python import keras
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras import layers, Model
-from tensorflow.keras import Sequential
-from tensorflow.keras.optimizers import SGD
+# from tensorflow.keras import Sequential
+# from tensorflow.keras.optimizers import SGD
 
-from tensorflow.keras.layers import Dense, Dropout
-from tensorflow.keras.layers import Embedding
-from tensorflow.keras.layers import LSTM
+# from tensorflow.keras.layers import Dense, Dropout
+# from tensorflow.keras.layers import Embedding
+# from tensorflow.keras.layers import LSTM
 tf.keras.backend.clear_session()
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn import datasets, tree, linear_model, svm
@@ -33,14 +35,13 @@ import pickle
 
 data = pd.read_csv('emotions.csv')
 data.describe()
-data
 
 #Separarting Positive, Neagtive and Neutral dataframes:
-pos = data.loc[data["label"]=="POSITIVE"]
+pos = data.loc[data["label"] == "POSITIVE"]
 sample_pos = pos.loc[2, 'fft_0_b':'fft_749_b']
-neg = data.loc[data["label"]=="NEGATIVE"]
+neg = data.loc[data["label"] == "NEGATIVE"]
 sample_neg = neg.loc[0, 'fft_0_b':'fft_749_b']
-neu = data.loc[data["label"]=="NEUTRAL"]
+neu = data.loc[data["label"] == "NEUTRAL"]
 sample_neu = neu.loc[1, 'fft_0_b':'fft_749_b']
 
 def Transform_data(data):
@@ -48,7 +49,7 @@ def Transform_data(data):
     encoding_data = ({'NEUTRAL': 0, 'POSITIVE': 1, 'NEGATIVE': 2} )
     data_encoded = data.replace(encoding_data)
     #getting brain signals into x variable
-    x=data_encoded.drop(["label"]  ,axis=1)
+    x = data_encoded.drop(["label"]  ,axis=1)
     #getting labels into y variable
     y = data_encoded.loc[:,'label'].values
     scaler = StandardScaler()
@@ -58,6 +59,32 @@ def Transform_data(data):
     #One hot encoding Labels 
     Y = to_categorical(y)
     return X,Y
+
+#Create pie chart for distribution
+counts = data['label'].value_counts()
+dlabels = {'NEUTRAL': 0, 'POSITIVE': 1, 'NEGATIVE': 2}
+dlabels = [dlabels[label] for label in counts.index]
+
+plt.figure(figsize = (8,8))
+plt.pie(counts, labels = dlabels, autopct = '%1.1f%%',startangle = 120, colors = ['red','blue','green'])
+plt.title('Pie Chart')
+plt.axis('equal')
+plt.show()
+
+#spectral analysis
+sampling_rates = 256
+start = data.columns.get_loc('fft_0_b')
+end   = data.columns.get_loc('fft_749_b') + 1
+
+sample = data.iloc[0, start:end].to_numpy(dtype=float)
+
+frequency, p_density = signal.welch(sample, fs=float(sampling_rates))
+plt.figure(figsize=(10,6))
+plt.figure(figsize=(10,6))
+plt.semilogy(frequency,p_density)
+plt.title('Gaylord andrei')
+plt.grid(True)
+plt.show()
 
 #Calling above function and splitting dataset into train and test
 pd.set_option('future.no_silent_downcasting', True)
@@ -88,5 +115,5 @@ DaddyChill.compile(optimizer = "adam", loss = "categorical_crossentropy", metric
 DaddyChill.summary()
 
 #Training and Evaluting model
-history = DaddyChill.fit(x_train, y_train, epochs = 10, validation_split = 0.1)
-loss, acc = DaddyChill.evaluate(x_test, y_test)
+# history = DaddyChill.fit(x_train, y_train, epochs = 10, validation_split = 0.1)
+# loss, acc = DaddyChill.evaluate(x_test, y_test)
