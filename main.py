@@ -27,6 +27,9 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.metrics import confusion_matrix
 
 import seaborn as sns
+import time
+import math
+import pickle
 
 data = pd.read_csv('emotions.csv')
 data.describe()
