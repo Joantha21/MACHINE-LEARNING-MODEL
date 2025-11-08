@@ -4,8 +4,9 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
-from tensorflow.keras.utils import to_categorical
 import tensorflow as tf
+from tensorflow.python import keras
+from tensorflow.keras.utils import to_categorical
 from tensorflow.keras import layers, Model
 from tensorflow.keras import Sequential
 from tensorflow.keras.optimizers import SGD
