@@ -8,14 +8,14 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
 from tensorflow.python import keras
-from tensorflow.keras.utils import to_categorical
-from tensorflow.keras import layers, Model
-# from tensorflow.keras import Sequential
-# from tensorflow.keras.optimizers import SGD
+from keras.utils import to_categorical
+from keras import layers, Model
+from keras import Sequential
+from keras.optimizers import SGD
 
-# from tensorflow.keras.layers import Dense, Dropout
-# from tensorflow.keras.layers import Embedding
-# from tensorflow.keras.layers import LSTM
+from keras.layers import Dense, Dropout
+from keras.layers import Embedding
+from keras.layers import LSTM
 tf.keras.backend.clear_session()
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn import datasets, tree, linear_model, svm
