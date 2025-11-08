@@ -69,7 +69,6 @@ dlabels = [dlabels[label] for label in counts.index]
 plt.figure(figsize = (8,8))
 plt.pie(counts, labels = dlabels, autopct = '%1.1f%%',startangle = 120, colors = ['red','blue','green'])
 plt.title('Pie Chart')
-plt.axis('equal')
 plt.show()
 
 #spectral analysis
@@ -77,11 +76,11 @@ sampling_rates = 256
 start = data.columns.get_loc('fft_0_b')
 end   = data.columns.get_loc('fft_749_b') + 1
 
-sample = data.iloc[0, start:end].to_numpy(dtype=float)
+sample = data.iloc[0, start:end].to_numpy(dtype = float)
 
-frequency, p_density = signal.welch(sample, fs=float(sampling_rates))
-plt.figure(figsize=(10,6))
-plt.figure(figsize=(10,6))
+frequency, p_density = signal.welch(sample, fs = float(sampling_rates))
+plt.figure(figsize = (10,6))
+plt.figure(figsize = (10,6))
 plt.semilogy(frequency,p_density)
 plt.title('Gaylord andrei')
 plt.grid(True)
@@ -133,73 +132,73 @@ fs = int(sampling_rates)  # you set sampling_rates = 256 above
 X_rows = data.loc[:, 'fft_0_b':'fft_749_b'].to_numpy(dtype=float)  # shape [N, T]
 
 
-def row_bandpowers_welch(x_row, fs=fs):
+def row_bandpowers_welch(x_row, fs = fs):
     # Welch PSD from one 1D time series row
     f, Pxx = signal.welch(
         x_row.astype(float),
-        fs=fs,
-        nperseg=2*fs,
-        noverlap=fs,
-        nfft=2*fs,
-        window='hann',
-        detrend='constant',
-        scaling='density',
-        average='mean'
+        fs = fs,
+        nperseg = 2 * fs,
+        noverlap = fs,
+        nfft = 2 * fs,
+        window = 'hann',
+        detrend = 'constant',
+        scaling = 'density',
+        average = 'mean'
     )
     bp = []
     for (lo, hi) in bands_hz:
         mask = (f >= lo) & (f < hi)
         bp.append(Pxx[mask].mean() if mask.any() else 0.0)
-    return np.array(bp, dtype=np.float32)  # [5]
+    return np.array(bp, dtype = np.float32)  # [5]
 
 # Build band-power matrix X_bp:[N,5]
-X_bp = np.vstack([row_bandpowers_welch(row, fs=fs) for row in X_rows]).astype(np.float32)
+X_bp = np.vstack([row_bandpowers_welch(row, fs = fs) for row in X_rows]).astype(np.float32)
 
 # Log-scale + standardize band-powers
 bp_scaler = StandardScaler().fit(np.log1p(X_bp))
 X_bp_std = bp_scaler.transform(np.log1p(X_bp)).astype(np.float32)
 
 # ---- WEAK labels (argmax band). Replace with your true labels if you have them. ----
-y_bp = X_bp.argmax(axis=1).astype(np.int64)
-Y_bp = to_categorical(y_bp, num_classes=5)
+y_bp = X_bp.argmax(axis = 1).astype(np.int64)
+Y_bp = to_categorical(y_bp, num_classes = 5)
 
 # Split
 Xtr_bp, Xte_bp, Ytr_bp, Yte_bp = train_test_split(
-    X_bp_std, Y_bp, test_size=0.2, random_state=4, stratify=y_bp
+    X_bp_std, Y_bp, test_size = 0.2, random_state = 4, stratify = y_bp
 )
 
 # Simple MLP over band-powers
-def build_bp_model(input_dim, num_classes=5, name='WaveformBP'):
-    inp = layers.Input(shape=(input_dim,), name='bp_in')
-    x = layers.Dense(128, activation='gelu')(inp)
+def build_bp_model(input_dim, num_classes = 5, name = 'WaveformBP'):
+    inp = layers.Input(shape = (input_dim,), name = 'bp_in')
+    x = layers.Dense(128, activation = 'gelu')(inp)
     x = layers.Dropout(0.2)(x)
-    x = layers.Dense(64, activation='gelu')(x)
+    x = layers.Dense(64, activation = 'gelu')(x)
     x = layers.Dropout(0.1)(x)
-    out = layers.Dense(num_classes, activation='softmax', name='bp_out')(x)
-    return Model(inp, out, name=name)
+    out = layers.Dense(num_classes, activation = 'softmax', name = 'bp_out')(x)
+    return Model(inp, out, name = name)
 
 WaveformBP = build_bp_model(Xtr_bp.shape[1], 5)
-WaveformBP.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+WaveformBP.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
 WaveformBP.summary()
 
 hist_bp = WaveformBP.fit(
     Xtr_bp, Ytr_bp,
-    epochs=12, batch_size=128,
-    validation_split=0.15, verbose=2
+    epochs = 12, batch_size = 128,
+    validation_split = 0.15, verbose = 2
 )
 
 loss_bp, acc_bp = WaveformBP.evaluate(Xte_bp, Yte_bp, verbose=0)
-print(f"[WaveformBP] Test accuracy: {acc_bp:.3f}")
+print(f'[WaveformBP] Test accuracy: {acc_bp:.3f}')
 
 # Report + confusion matrix
-y_true_bp = np.argmax(Yte_bp, axis=1)
-y_pred_bp = np.argmax(WaveformBP.predict(Xte_bp, verbose=0), axis=1)
+y_true_bp = np.argmax(Yte_bp, axis = 1)
+y_pred_bp = np.argmax(WaveformBP.predict(Xte_bp, verbose = 0), axis = 1)
 print(classification_report(y_true_bp, y_pred_bp,
-      target_names=[label_map[i] for i in range(4)], digits=3))
+      target_names = [label_map[i] for i in range(4)], digits = 3))
 ConfusionMatrixDisplay.from_predictions(
     y_true_bp, y_pred_bp,
-    display_labels=[label_map[i] for i in range(4)],
-    xticks_rotation=45
+    display_labels = [label_map[i] for i in range(4)],
+    xticks_rotation = 45
 )
 plt.title("Waveform band classifier (weak labels)")
 plt.show()
@@ -211,9 +210,9 @@ def predict_waveform_from_timeseries(ts_1d, fs=fs, threshold=0.6):
     Returns dict with label, confidence, is_known, and per-class probs.
     """
     f, Pxx = signal.welch(
-        np.asarray(ts_1d, dtype=float),
-        fs=fs, nperseg=2*fs, noverlap=fs, nfft=2*fs, window='hann',
-        detrend='constant', scaling='density', average='mean'
+        np.asarray(ts_1d, dtype = float),
+        fs = fs, nperseg = 2 * fs, noverlap = fs, nfft = 2 * fs, window = 'hann',
+        detrend = 'constant', scaling = 'density', average = 'mean'
     )
     bps = []
     for (lo, hi) in bands_hz:
@@ -232,6 +231,6 @@ def predict_waveform_from_timeseries(ts_1d, fs=fs, threshold=0.6):
         "probs": {label_map[i]: float(p) for i, p in enumerate(probs)}
     }
 
-# Demo prediction on your earlier 'sample' row:
-demo_pred = predict_waveform_from_timeseries(sample, fs=fs, threshold=0.6)
+# Demo prediction on the earlier 'sample' row:
+demo_pred = predict_waveform_from_timeseries(sample, fs = fs, threshold = 0.6)
 print("Demo waveform prediction:", demo_pred)
