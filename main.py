@@ -33,7 +33,7 @@ import time
 import math
 import pickle
 
-data = pd.read_csv('emotions.csv')
+data = pd.read_csv('eeg.csv')
 data.describe()
 
 
