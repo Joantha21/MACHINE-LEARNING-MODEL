@@ -31,7 +31,7 @@ print(daddy_ls.shape)
 #display
 plt.imshow(daddy_im[0].numpy().squeeze(), cmap='gray_r');
 
-daddy_fig = plt.daddy_fig()     #figure
+daddy_fig = plt.figure()     #figure
 daddy_nuts = 60     #nums of images
 for index in range(1, daddy_nuts + 1):
     plt.subplot(6, 10, index)
