@@ -33,7 +33,7 @@ import time
 import math
 import pickle
 
-data = pd.read_csv('eeg.csv')
+data = pd.read_csv('emotions.csv')
 data.describe()
 
 
@@ -47,7 +47,7 @@ sample_neu = neu.loc[1, 'fft_0_b':'fft_749_b']
 
 def Transform_data(data):
     #Encoding Lables into numbers
-    encoding_data = ({'NEUTRAL': 0, 'POSITIVE': 1, 'NEGATIVE': 2} )
+    encoding_data = ({'NEUTRAL': 0, 'POSITIVE': 1, 'NEGATIVE': 2})
     data_encoded = data.replace(encoding_data)
     #getting brain signals into x variable
     x = data_encoded.drop(["label"]  ,axis=1)
@@ -125,7 +125,7 @@ loss, acc = DaddyChill.evaluate(x_test, y_test)
 # create weak labels (argmax band), train a small MLP, and add an inference helper.
 
 label_map = {0: 'delta', 1: 'theta', 2: 'alpha', 3: 'beta', 4: 'gamma'}
-bands_hz = [(1,4), (4,8), (8,13), (13,30), (30,50)]
+bands_hz = [(1,4), (4,8), (8,13), (13,30), (30,60)]
 fs = int(sampling_rates)  # you set sampling_rates = 256 above
 
 # Grab the per-row time series you already use ('fft_0_b'..'fft_749_b')

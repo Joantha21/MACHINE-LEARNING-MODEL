@@ -1,147 +1,224 @@
-import pandas as pd
-import numpy as np
-import tensorflow as tf
-from sklearn.metrics import confusion_matrix
-
-from scipy.io import loadmat
 import os
-from functools import reduce
-from scipy import signal
-from scipy.stats import entropy
-from scipy.fft import fft, ifft
+import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split, StratifiedKFold
-from sklearn.preprocessing import StandardScaler
-from tensorflow import keras as K
 import matplotlib.pyplot as plt
-import scipy
-from sklearn import metrics
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score
-from sklearn.model_selection import KFold,cross_validate
-from keras.layers import Dense, Activation, Flatten, concatenate, Input, Dropout, LSTM, Bidirectional,BatchNormalization,PReLU,ReLU,Reshape
-# from keras.wrappers.scikit_learn import KerasClassifier
-from sklearn.metrics import classification_report
-from keras.models import Sequential, Model, load_model
-import matplotlib.pyplot as plt;
-from keras.callbacks import EarlyStopping, ModelCheckpoint
-from sklearn.decomposition import PCA
-from tensorflow import keras
-from sklearn.model_selection import cross_val_score
-from keras.layers import Conv1D,Conv2D,Add
-from keras.layers import MaxPool1D, MaxPooling2D
 import seaborn as sns
 
-import warnings
-warnings.filterwarnings('ignore')
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix, classification_report
 
+import tensorflow as tf
+from tensorflow.python import keras
+from keras import Model, layers
 
-df = pd.read_csv('EEG_Eye_State_Classification.csv')
-df.info()
-df.describe()
-df.isnull().sum()
+# Load data
+data = pd.read_csv('eeg1.csv')
 
-plt.figure(figsize = (15,15))
-cor_matrix = df.corr()
-sns.heatmap(cor_matrix,annot=True)
+# Check data shape and info
+print("=" * 60)
+print("DATASET INFORMATION")
+print("=" * 60)
+print(f"Shape: {data.shape}")
+print(f"\nColumns: {list(data.columns)}")
+print(f"\nFirst few rows:")
+print(data.head())
+print(f"\nBasic statistics:")
+print(data.describe())
 
+# Visualize sample EEG bands
+fig, axes = plt.subplots(2, 1, figsize=(16, 10))
 
-# Plotting target distribution 
-plt.figure(figsize=(6,6))
-df['eyeDetection'].value_counts().plot.pie(explode=[0.1,0.1], autopct='%1.1f%%', shadow=True, textprops={'fontsize':16}).set_title("Target distribution")
+# Plot first sample
+sample = data.iloc[0]
+axes[0].plot(sample.values, marker='o', linewidth=2, markersize=8)
+axes[0].set_xticks(range(5))
+axes[0].set_xticklabels(['Delta', 'Theta', 'Alpha', 'Beta', 'Gamma'])
+axes[0].set_title("Sample EEG Band Powers (First Row)", fontsize=14, fontweight='bold')
+axes[0].set_ylabel("Power", fontsize=12)
+axes[0].grid(True, alpha=0.3)
 
-data = df.copy()
-y= data.pop('eyeDetection')
-x= data
+# Plot average across all samples
+avg_bands = data.mean()
+axes[1].bar(range(5), avg_bands.values, color=['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd'])
+axes[1].set_xticks(range(5))
+axes[1].set_xticklabels(['Delta\n(1-4Hz)', 'Theta\n(4-8Hz)', 'Alpha\n(8-13Hz)', 'Beta\n(13-30Hz)', 'Gamma\n(30-60Hz)'])
+axes[1].set_title("Average EEG Band Powers Across All Samples", fontsize=14, fontweight='bold')
+axes[1].set_ylabel("Average Power", fontsize=12)
+axes[1].grid(True, alpha=0.3, axis='y')
 
-x_new = StandardScaler().fit_transform(x)
-
-x_new = pd.DataFrame(x_new) 
-x_new.columns = x.columns
-
-x_train,x_test,y_train,y_test = train_test_split(x_new,y,test_size=0.15)
-x_train.shape, x_test.shape,y_train.shape,y_test.shape
-
-x_train = np.array(x_train).reshape(-1,14,1)
-x_test = np.array(x_test).reshape(-1,14,1)
-
-x_train.shape, x_test.shape,y_train.shape,y_test.shape
-
-inputs = tf.keras.Input(shape=(14,1))
-
-Dense1 = Dense(64, activation = 'relu',kernel_regularizer=keras.regularizers.l2())(inputs)
-
-#Dense2 = Dense(128, activation = 'relu',kernel_regularizer=keras.regularizers.l2())(Dense1)
-#Dense3 = Dense(256, activation = 'relu',kernel_regularizer=keras.regularizers.l2())(Dense2)
-
-lstm_1=  Bidirectional(LSTM(256, return_sequences = True))(Dense1)
-drop = Dropout(0.3)(lstm_1)
-lstm_3=  Bidirectional(LSTM(128, return_sequences = True))(drop)
-drop2 = Dropout(0.3)(lstm_3)
-
-flat = Flatten()(drop2)
-
-#Dense_1 = Dense(256, activation = 'relu')(flat)
-
-Dense_2 = Dense(128, activation = 'relu')(flat)
-outputs = Dense(1, activation='sigmoid')(Dense_2)
-
-model = tf.keras.Model(inputs, outputs)
-
-model.summary()
-
-tf.keras.utils.plot_model(model)
-
-def train_model(model,x_train, y_train,x_test,y_test, save_to, epoch = 2):
-
-        opt_adam = keras.optimizers.Adam(learning_rate=0.001)
-
-        es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=10)
-        mc = ModelCheckpoint(save_to + '_best_model.h5', monitor='val_accuracy', mode='max', verbose=1, save_best_only=True)
-        lr_schedule = tf.keras.callbacks.LearningRateScheduler(lambda epoch: 0.001 * np.exp(-epoch / 10.))
-        
-        model.compile(optimizer=opt_adam,
-                  loss=['binary_crossentropy'],
-                  metrics=['accuracy'])
-        
-        history = model.fit(x_train,y_train,
-                        batch_size=20,
-                        epochs=epoch,
-                        validation_data=(x_test,y_test),
-                        callbacks=[es,mc,lr_schedule])
-        
-        saved_model = load_model(save_to + '_best_model.h5')
-        
-        return model,history
-
-y_pred =model.predict(x_test)
-y_pred = np.array(y_pred >= 0.5, dtype = np.int)
-confusion_matrix(y_test, y_pred)
-
-print(classification_report(y_test, y_pred))
-
-model,history = train_model(model, x_train, y_train,x_test, y_test, save_to= './', epoch = 100) 
-
-plt.plot(history.history['accuracy'])
-plt.plot(history.history['val_accuracy'])
-plt.title('model accuracy')
-plt.ylabel('accuracy')
-plt.xlabel('epoch')
-plt.legend(['train', 'test'], loc='upper left')
-plt.show()
-# summarize history for loss
-plt.plot(history.history['loss'])
-plt.plot(history.history['val_loss'])
-plt.title('model loss')
-plt.ylabel('loss')
-plt.xlabel('epoch')
-plt.legend(['train', 'test'], loc='upper left')
+plt.tight_layout()
 plt.show()
 
-y_pred =model.predict(x_test)
-y_pred = np.array(y_pred >= 0.5, dtype = np.int)
-confusion_matrix(y_test, y_pred)
+# Define labels and frequency bands
+label_map = {0: 'delta', 1: 'theta', 2: 'alpha', 3: 'beta', 4: 'gamma'}
+bands_hz = [(1,4), (4,8), (8,13), (13,30), (30,60)]
 
-print(classification_report(y_test, y_pred))
+# Create label mapping for 3 classes (assuming you want to group the 5 bands into 3 classes)
+label_mapping = {
+    'low': 0,      # delta, theta
+    'medium': 1,   # alpha
+    'high': 2      # beta, gamma
+}
+
+def Transform_data(df):
+    """
+    Transform the EEG data into features (X) and labels (Y).
+    Since the CSV has no label column, we'll create synthetic labels based on 
+    dominant frequency bands.
+    """
+    # Extract features - all 5 EEG bands
+    feature_cols = ['Delta', 'Theta', 'Alpha', 'Beta', 'Gamma']
+    X = df[feature_cols].copy()
+    
+    # Create synthetic labels based on which frequency band is dominant
+    # This is a reasonable approach for EEG data classification
+    Y = df[feature_cols].idxmax(axis=1).map({
+        'Delta': 0,   # Low frequency (1-4 Hz)
+        'Theta': 0,   # Low frequency (4-8 Hz)
+        'Alpha': 1,   # Medium frequency (8-13 Hz)
+        'Beta': 2,    # High frequency (13-30 Hz)
+        'Gamma': 2    # High frequency (30-60 Hz)
+    })
+    
+    print(f"\nLabel distribution (based on dominant frequency):")
+    print(Y.value_counts().sort_index())
+    print(f"\nMapping: 0=Low (Delta/Theta), 1=Medium (Alpha), 2=High (Beta/Gamma)")
+    
+    return X, Y
+
+# Transform data
+pd.set_option('future.no_silent_downcasting', True)
+X, Y = Transform_data(data)
+
+# Split data
+x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=4)
+
+# Convert to numpy arrays
+x_train = np.asarray(x_train)
+x_test = np.asarray(x_test)
+y_train = np.asarray(y_train)
+y_test = np.asarray(y_test)
+
+# Determine number of classes
+num_classes = int(np.unique(y_train).size)
+print(f"Number of classes: {num_classes}")
+print(f"Training samples: {x_train.shape[0]}, Test samples: {x_test.shape[0]}")
+print(f"Feature dimension: {x_train.shape[1]}")
+
+def create_model(input_dim, num_classes, model_name="DaddyChill"):
+    """Create an improved GRU-based model for EEG classification"""
+    inputs = layers.Input(shape=(input_dim,), name="inputs")
+    
+    # Expand dimensions for RNN processing
+    x = layers.Lambda(lambda t: tf.expand_dims(t, axis=-1), name="expand_dims")(inputs)  
+    
+    # First GRU layer with dropout
+    x = layers.GRU(128, return_sequences=True, name="gru1")(x)
+    x = layers.Dropout(0.3, name="dropout1")(x)
+    
+    # Second GRU layer
+    x = layers.GRU(64, return_sequences=False, name="gru2")(x)
+    x = layers.Dropout(0.3, name="dropout2")(x)
+    
+    # Dense layers
+    x = layers.Dense(32, activation="relu", name="dense1")(x)
+    x = layers.Dropout(0.2, name="dropout3")(x)
+    
+    # Output layer
+    outputs = layers.Dense(num_classes, activation="softmax", name="output")(x)
+    
+    return Model(inputs, outputs, name=model_name)
+
+# Create model
+DaddyChill = create_model(x_train.shape[1], num_classes)
+DaddyChill.summary()
+
+# Compile model
+DaddyChill.compile(
+    optimizer='adam',
+    loss='sparse_categorical_crossentropy',
+    metrics=['accuracy']
+)
+
+# Train model
+print("\nTraining model...")
+history = DaddyChill.fit(
+    x_train,
+    y_train,
+    validation_split=0.2,
+    batch_size=32,
+    epochs=100,  # Increased epochs
+    callbacks=[
+        keras.callbacks.EarlyStopping(
+            monitor='val_loss',
+            patience=15,  # Increased patience
+            restore_best_weights=True,
+            verbose=1
+        ),
+        keras.callbacks.ReduceLROnPlateau(
+            monitor='val_loss',
+            factor=0.5,
+            patience=5,
+            min_lr=1e-7,
+            verbose=1
+        )
+    ],
+    verbose=1
+)
+
+# Plot training history
+fig, axes = plt.subplots(1, 2, figsize=(15, 5))
+
+axes[0].plot(history.history['loss'], label='Training Loss', linewidth=2)
+axes[0].plot(history.history['val_loss'], label='Validation Loss', linewidth=2)
+axes[0].set_title('Model Loss Over Epochs', fontsize=14, fontweight='bold')
+axes[0].set_xlabel('Epoch', fontsize=12)
+axes[0].set_ylabel('Loss', fontsize=12)
+axes[0].legend(fontsize=11)
+axes[0].grid(True, alpha=0.3)
+
+axes[1].plot(history.history['accuracy'], label='Training Accuracy', linewidth=2)
+axes[1].plot(history.history['val_accuracy'], label='Validation Accuracy', linewidth=2)
+axes[1].set_title('Model Accuracy Over Epochs', fontsize=14, fontweight='bold')
+axes[1].set_xlabel('Epoch', fontsize=12)
+axes[1].set_ylabel('Accuracy', fontsize=12)
+axes[1].legend(fontsize=11)
+axes[1].grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+
+# Evaluate on test set
+print("\nEvaluating on test set...")
+probs = DaddyChill.predict(x_test, verbose=0)
+y_pred = np.argmax(probs, axis=1)
+
+acc = (y_pred == y_test).mean()
+print(f"Test Accuracy: {acc * 100:.3f}%")
+
+# Confusion matrix
+cm = confusion_matrix(y_test, y_pred)
+clr = classification_report(y_test, y_pred, target_names=list(label_mapping.keys()))
+
+plt.figure(figsize=(10, 8))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar_kws={'label': 'Count'})
+plt.xticks(np.arange(num_classes) + 0.5, list(label_mapping.keys()), fontsize=11)
+plt.yticks(np.arange(num_classes) + 0.5, list(label_mapping.keys()), rotation=0, fontsize=11)
+plt.xlabel("Predicted Label", fontsize=12, fontweight='bold')
+plt.ylabel("True Label", fontsize=12, fontweight='bold')
+plt.title("Confusion Matrix - EEG Frequency Band Classification", fontsize=14, fontweight='bold')
+plt.tight_layout()
+plt.show()
+
+print("\n" + "=" * 60)
+print("CLASSIFICATION REPORT")
+print("=" * 60)
+print(clr)
+print("\n" + "=" * 60)
+print("FINAL RESULTS")
+print("=" * 60)
+print(f"Test Accuracy: {acc * 100:.2f}%")
+print(f"Number of test samples: {len(y_test)}")
+print(f"Correctly classified: {(y_pred == y_test).sum()}")
+print(f"Misclassified: {(y_pred != y_test).sum()}")
+print("=" * 60)
